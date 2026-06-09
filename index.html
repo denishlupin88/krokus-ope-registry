@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Реестр обращений ОПЭ Крокус</title>
+  <style>
+    :root {
+      --bg: #f1f1f1; --surface: #fff; --text: #333; --muted: #6e6d6d;
+      --border: #e9e9e9; --accent: #c9007e; --accent-dark: #a80069; --accent-light: #fdf0f7;
+      --green: #4caf50; --yellow: #ffeb3b; --shadow: 0 4px 18px rgba(0,0,0,.06);
+      --head-bg: #fafafa;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    body {
+      font-family: Arial, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 13px;
+    }
+    .app {
+      height: 100vh; display: flex; flex-direction: column;
+      padding: 8px 10px 6px; gap: 6px;
+    }
+    .top {
+      flex-shrink: 0; display: grid; grid-template-columns: minmax(140px, 220px) 1fr minmax(120px, 200px);
+      align-items: center; gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border); border-top: 3px solid var(--accent);
+      border-radius: 10px; padding: 8px 12px; box-shadow: var(--shadow);
+    }
+    .logo-bit, .logo-crocus {
+      height: 40px; width: auto; max-width: 100%; object-fit: contain; display: block;
+    }
+    .logo-bit { justify-self: start; }
+    .logo-crocus { justify-self: end; }
+    .top-main {
+      min-width: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; gap: 4px;
+    }
+    .top-main h1 { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; }
+    .top-meta { margin: 0; color: var(--muted); font-size: 0.75rem; }
+    .stats-inline {
+      display: flex; flex-wrap: nowrap; gap: 5px; justify-content: center;
+      overflow-x: auto; max-width: 100%;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+      background: var(--accent-light); border: 1px solid #f3c8e2;
+      border-radius: 999px; padding: 2px 8px; font-size: 0.68rem;
+    }
+    .pill b { font-size: 0.82rem; color: var(--accent); }
+    .pill-muted { background: #f5f5f5; border-color: #e0e0e0; }
+    .pill-muted b { color: #555; }
+    .pill-warn { background: #ffebee; border-color: #ffcdd2; }
+    .pill-warn b { color: #b00020; }
+    .toolbar {
+      flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 8px;
+    }
+    .toolbar input, .toolbar select, .toolbar button {
+      border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px;
+      font: inherit; background: var(--surface); font-size: 11px;
+    }
+    .toolbar input { flex: 1 1 180px; min-width: 140px; }
+    .btn { cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    .toolbar .btn-primary {
+      background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important;
+      font-weight: 700; text-transform: uppercase; letter-spacing: .02em;
+    }
+    .toolbar .btn-primary:hover { background: var(--accent-dark) !important; border-color: var(--accent-dark) !important; }
+    .toolbar .btn-save {
+      background: var(--green) !important; color: #fff !important; border-color: var(--green) !important;
+      font-weight: 700;
+    }
+    .toolbar .btn-save:hover { background: #43a047 !important; border-color: #43a047 !important; }
+    .toolbar .btn-publish {
+      background: #323694 !important; color: #fff !important; border-color: #323694 !important;
+      font-weight: 700;
+    }
+    .toolbar .btn-publish:hover { background: #252a70 !important; border-color: #252a70 !important; }
+    .toolbar .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .save-status { color: var(--muted); font-size: 0.78rem; min-width: 120px; }
+    .save-status.ok { color: var(--green); font-weight: 600; }
+    .save-status.err { color: #b00020; font-weight: 600; }
+    .table-area {
+      flex: 1; min-height: 0; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: var(--shadow); overflow: hidden;
+    }
+    .table-wrap {
+      height: 100%; overflow-x: auto; overflow-y: auto;
+      scrollbar-gutter: stable; scrollbar-width: thin;
+      scrollbar-color: #c9007e #f1f1f1;
+    }
+    .table-wrap::-webkit-scrollbar { width: 14px; height: 14px; }
+    .table-wrap::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #e50071 0%, #c9007e 100%);
+      border-radius: 8px; border: 3px solid #f1f1f1; min-height: 40px;
+    }
+    .table-wrap::-webkit-scrollbar-thumb:hover { background: #a80069; }
+    .table-wrap::-webkit-scrollbar-corner { background: #f1f1f1; }
+    .table-wrap::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 0; }
+    table {
+      border-collapse: separate; border-spacing: 0; width: 100%;
+      min-width: 100%; table-layout: fixed; font-size: 12.5px;
+    }
+    thead th {
+      position: sticky; top: 0; z-index: 4; background: var(--head-bg);
+      border-bottom: 2px solid var(--accent); padding: 5px 7px; text-align: left;
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: .03em;
+      color: #333; white-space: nowrap; font-weight: 700; line-height: 1.15;
+    }
+    tbody td {
+      border-bottom: 1px solid #eee; padding: 4px 5px;
+      vertical-align: top; background: #fff; line-height: 1.3;
+    }
+    tbody tr:hover td { background: var(--accent-light); }
+    tbody tr:nth-child(even) td { background: #fafafa; }
+    tbody tr:nth-child(even):hover td { background: #fce8f3; }
+    th[data-col="№"], td[data-col="№"] {
+      position: sticky; left: 0; z-index: 3; width: 38px;
+      text-align: center; font-weight: 700; color: var(--accent); background: inherit;
+    }
+    thead th[data-col="№"] { z-index: 5; background: var(--head-bg); }
+    th[data-col="Обращение"], td[data-col="Обращение"] {
+      position: sticky; left: 38px; z-index: 3; width: 22%;
+      background: inherit; box-shadow: 2px 0 6px rgba(201,0,126,.06);
+    }
+    thead th[data-col="Обращение"] { z-index: 5; background: var(--head-bg); }
+    th[data-col="Дата обращения"], td[data-col="Дата обращения"] { width: 8%; }
+    th[data-col="Плановый срок"], td[data-col="Плановый срок"] { width: 7%; }
+    th[data-col="Дата выполнения"], td[data-col="Дата выполнения"] { width: 7%; }
+    th[data-col="Инициатор"], td[data-col="Инициатор"] { width: 7%; }
+    th[data-col="Исполнитель"], td[data-col="Исполнитель"] { width: 6%; }
+    th[data-col="Статус"], td[data-col="Статус"] { width: 7%; }
+    th[data-col="Оценка, ч"], td[data-col="Оценка, ч"] { width: 4%; }
+    th[data-col="Описание работы / решение"], td[data-col="Описание работы / решение"] { width: 16%; }
+    th[data-col="Комментарии / интеграционные заметки"], td[data-col="Комментарии / интеграционные заметки"] { width: 12%; }
+    th[data-col="actions"], td[data-col="actions"] { width: 40px; text-align: center; }
+    .cell-input, .cell-select, .cell-textarea {
+      width: 100%; border: 1px solid #dedede; border-radius: 4px; padding: 4px 6px;
+      font: inherit; font-size: 12.5px; background: #fff; color: inherit;
+    }
+    .cell-input:focus, .cell-select:focus, .cell-textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,0,126,.15);
+    }
+    .cell-textarea {
+      min-height: 28px; resize: none; line-height: 1.3;
+      overflow: hidden; field-sizing: content;
+    }
+    .cell-select { padding: 3px 4px; }
+    .cell-input[type="date"] { padding: 1px 4px; }
+    .cell-select.st-new { background: #fdf0f7; color: #c9007e; font-weight: 600; }
+    .cell-select.st-progress { background: #fff9c4; color: #7a6200; font-weight: 600; }
+    .cell-select.st-clarify { background: #e8f4fd; color: #323694; font-weight: 600; }
+    .cell-select.st-done { background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+    .cell-select.st-hold { background: #f1f1f1; color: #6e6d6d; font-weight: 600; }
+    .cell-select.st-cancel { background: #ffebee; color: #b00020; font-weight: 600; }
+    .cell-select.st-default { background: #fff; color: #929292; }
+    .btn-icon {
+      width: 26px; height: 26px; padding: 0; border: 1px solid #fecaca;
+      border-radius: 5px; background: #fff5f5; color: #dc2626; font-size: 15px; line-height: 1;
+    }
+    .btn-icon:hover { background: #fee2e2; }
+    .footer-hint {
+      flex-shrink: 0; color: var(--muted); font-size: 0.68rem; text-align: center;
+      line-height: 1.1; margin: 0;
+    }
+    .hidden { display: none !important; }
+    body.hours-col-hidden th[data-col="Оценка, ч"],
+    body.hours-col-hidden td[data-col="Оценка, ч"] { display: none !important; }
+    body.view-client .toolbar-edit { display: none !important; }
+    body.view-client th[data-col="actions"], body.view-client td[data-col="actions"] { display: none !important; }
+    body.view-client .logo-crocus { pointer-events: none; user-select: none; }
+    .cell-view { display: block; min-height: 1.3em; word-break: break-word; white-space: pre-wrap; }
+    .cell-view.status-badge { font-weight: 600; padding: 2px 4px; border-radius: 4px; }
+    #importFile { display: none; }
+  </style>
+</head>
+<body class="view-client">
+  <div class="app">
+    <header class="top">
+      <img src="assets/logo_perviy_bit.png" alt="Первый БИТ" class="logo-bit">
+      <div class="top-main">
+        <h1 id="pageTitle">Реестр обращений ОПЭ Крокус</h1>
+        <p class="top-meta" id="pageMeta">Клиент: КРОКУС · Обновлено: <span id="updatedAt">2026-06-09</span></p>
+        <div class="stats-inline">
+          <span class="pill" title="Все задачи в реестре">Всего <b id="statTotal">0</b></span>
+          <span class="pill" title="Статус «Выполнено»">Выполнено <b id="statDone">0</b></span>
+          <span class="pill" title="Новое, в работе, на уточнении">В работе <b id="statOpen">0</b></span>
+          <span class="pill pill-muted" title="Поступило сегодня (по дате обращения)">Сегодня <b id="statToday">0</b></span>
+          <span class="pill pill-muted" title="Поступило за последние 7 дней">За 7 дней <b id="statWeek">0</b></span>
+          <span class="pill pill-warn" title="Плановый срок прошёл, задача не закрыта">Просрочено <b id="statOverdue">0</b></span>
+        </div>
+      </div>
+      <img src="assets/logo_crocus_group.png" alt="Crocus Group" class="logo-crocus" id="logoCrocus" title="">
+    </header>
+
+    <div class="toolbar">
+      <button type="button" class="btn btn-primary toolbar-edit" id="addRow">+ Добавить задачу</button>
+      <button type="button" class="btn btn-save toolbar-edit" id="saveBtn">Сохранить</button>
+      <button type="button" class="btn btn-publish toolbar-edit" id="publishGithub" title="Сохранить и выгрузить снимок для клиента на GitHub Pages">Для клиента</button>
+      <span class="save-status toolbar-edit" id="saveStatus"></span>
+      <button type="button" class="btn toolbar-edit" id="exportJson">Экспорт JSON</button>
+      <button type="button" class="btn toolbar-edit" id="importJson">Импорт JSON</button>
+      <input type="file" id="importFile" accept=".json,application/json">
+      <input id="search" type="search" placeholder="Поиск…">
+      <select id="statusFilter">
+        <option value="">Все статусы</option>
+      </select>
+      <select id="executorFilter">
+        <option value="">Все исполнители</option>
+        <option value="БИТ">БИТ</option>
+        <option value="КРОКУС">КРОКУС</option>
+      </select>
+    </div>
+
+    <div class="table-area">
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="headerRow"></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer-hint" id="footerHint" title="Запуск через ярлык на рабочем столе">Сохранение → реестр_обращений.json (open_registry.bat)</div>
+  </div>
+
+  <script id="initial-data" type="application/json">{"meta": {"title": "Реестр обращений ОПЭ Крокус", "client": "КРОКУС", "updated": "2026-06-09", "source_xlsx": "Реестр обращений ОПЭ Крокус.xlsx", "initiators": ["Баташова Оксана Пантелеевна", "Гришаев Арсений Анатольевич", "Задков Владимир Владимирович", "Замяткин Роман Владимирович", "Хлюпин Денис Сергеевич"]}, "appeals": [{"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Переименовать колонку в отчете по лимитам\nПереименовать колонку «Разница» в «Остаток» в отчете по лимитам", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": null, "Дата выполнения": null, "Оценка, ч": 0, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Формирование ЗРДС на уплату РКО\nСоздать алгоритм формирования ЗРДС на уплату РКО при проведении списаний с РС. Реализовать проверку уже созданной заявки: не отображать кнопку, если платежная позиция уже указана. Добавить две кнопки: «РКО» и «Исполнительные листы». Логика заполнения источника финансирования требует уточнения", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-05-07", "Дата выполнения": "2026-05-07", "Оценка, ч": 16, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Выгрузка прикрепленных файлов\nРеализовать выгрузку прикрепленных файлов после утверждения в папку по кнопке в реестре платежей", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "КРОКУС", "Статус": "Выполнено", "Плановый срок": "2026-05-07", "Дата выполнения": "2026-05-07", "Оценка, ч": 0, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Контроль суммы исходной ЗРДС\nЕсли ЗРДС утверждена, при корректировке списка реализовать проверку, чтобы не превысить сумму исходной заявки", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-05-08", "Дата выполнения": "2026-05-08", "Оценка, ч": 4, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Признак «Сверх бюджета» для зарплатных реестров\nЗарплатные реестры сверх лимита проводить с признаком «Сверх бюджета» При втором проведении", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "КРОКУС", "Статус": "Выполнено", "Плановый срок": "2026-05-08", "Дата выполнения": "2026-05-08", "Оценка, ч": 0, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Исключение строки из реестра\nДобавить кнопку «Исключить из реестра». Если оплата была проведена, задавать вопрос об удалении документов оплаты. При подтверждении помечать созданные документы на удаление и исключать строку из реестра. Добавить комментарий с причиной исключения", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-05-17", "Дата выполнения": "2026-05-17", "Оценка, ч": 8, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Права доступа", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-05-18", "Дата выполнения": "2026-05-18", "Оценка, ч": 8, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Ввод плановых данных\nСогласовать ввод, кто будет вводить и дату (нужно сделать до запуска)", "Описание работы / решение": "Вводят сотрудники ФО КРОКУС", "Исполнитель": "КРОКУС", "Статус": "Выполнено", "Плановый срок": null, "Дата выполнения": null, "Оценка, ч": null, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Проекты\nАктуализировать в КИТ и выгрузить", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "КРОКУС", "Статус": "Выполнено", "Плановый срок": "2026-05-12", "Дата выполнения": "2026-05-12", "Оценка, ч": null, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": null, "Инициатор": "Хлюпин Денис Сергеевич", "Обращение": "Остатки по счетам в разрезе источников финансирования и ЦФО/Организация\nПредоставить данные для ввода", "Описание работы / решение": null, "Исполнитель": "КРОКУС", "Статус": "В работе", "Плановый срок": "2026-06-09", "Дата выполнения": null, "Оценка, ч": null, "Комментарии / интеграционные заметки": "Ожидаю данные"}, {"№": null, "Дата обращения": null, "Инициатор": null, "Обращение": "Публикация сервисов для обмена с КИТ", "Описание работы / решение": "Выполнено по оценке", "Исполнитель": "КРОКУС", "Статус": "Выполнено", "Плановый срок": "2026-05-19", "Дата выполнения": "2026-05-19", "Оценка, ч": null, "Комментарии / интеграционные заметки": null}, {"№": null, "Дата обращения": "2026-05-27", "Инициатор": "Баташова Оксана Пантелеевна", "Обращение": "Формула строки «Операционная деятельность» в выгруженной форме бюджета\nВ выгруженной форме бюджета по строке «Операционная деятельность» суммируются поступления и расходы. Ожидаемое поведение: расходы должны вычитаться из поступлений. Нужно определить корректный вариант: изменить формулу в программе или загружать расходы с минусом, проверив, не будет ли это считаться ошибкой.", "Описание работы / решение": "Внесена корректировка в настройку формы ввода: включен признак «Использовать коэффициенты статей бюджета». Документы перезаполнены в рабочей базе и на копии для обучения.", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-05-27", "Дата выполнения": "2026-05-27", "Оценка, ч": null, "Комментарии / интеграционные заметки": "Завершено 27.05.2026. Исправление применено в рабочей базе и на учебной копии."}, {"№": null, "Дата обращения": "2026-06-04", "Инициатор": "Замяткин Роман Владимирович", "Обращение": "Перенос признака АВАНС/ПОСТОПЛАТА из 1С КИТ в ЗРДС 1С БИТ\nНужно перенести признак АВАНС/ПОСТОПЛАТА из 1С КИТ в ЗРДС 1С БИТ ФИНАНС.", "Описание работы / решение": "В ЗРДС добавлены два типа платежа (аванс / постоплата).", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-06-04", "Дата выполнения": "2026-06-04", "Оценка, ч": null, "Комментарии / интеграционные заметки": "На стороне КРОКУС (Арсений): задействовать реквизит при выгрузке из 1С КИТ. Ответ БИТ 04.06.2026."}, {"№": null, "Дата обращения": "2026-06-04", "Инициатор": "Замяткин Роман Владимирович", "Обращение": "Не работает выбор необходимых документов в ЗРДС (1С БИТ)\nВ ЗРДС 1С БИТ ФИНАНС нельзя отметить галками необходимые документы — система не даёт выбрать.", "Описание работы / решение": "Направлено Арсению на проверку (ответ БИТ от 04.06.2026).", "Исполнитель": "КРОКУС", "Статус": "Выполнено", "Плановый срок": "2026-06-04", "Дата выполнения": "2026-06-04", "Оценка, ч": null, "Комментарии / интеграционные заметки": "Скриншот image001.png из письма."}, {"№": null, "Дата обращения": "2026-06-04", "Инициатор": "Замяткин Роман Владимирович", "Обращение": "Контроль лимитов в 1С БИТ не срабатывает; унификация ЦФО КРОКУС\nКонтроль в 1С БИТ не срабатывает — сведения о лимитах и взаиморасчётах отключены. ЦФО выгружается из КИТ как «КРОКУС АО», лимиты введены по разным ЦФО: АО «КРОКУС» и КРОКУС АО.", "Описание работы / решение": "Создан документ установки контрольных значений (проводить после ввода плановых данных бюджета БДДС). Выдан доступ на просмотр вкладки «Контроль».", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-06-04", "Дата выполнения": "2026-06-04", "Оценка, ч": null, "Комментарии / интеграционные заметки": "Скриншот image002.png. КРОКУС: согласовать единое наименование ЦФО в БИТ ФИНАНС для корректной выгрузки из 1С КИТ. Ответ БИТ 04.06.2026."}, {"№": null, "Дата обращения": "2026-06-04", "Инициатор": "Задков Владимир Владимирович", "Обращение": "Сортировка статей бюджета по кодификатору и перезаполнение форм ввода\nВладимир: статьи в форме ввода бюджета не отсортированы по алфавиту/коду — как отсортировать?", "Описание работы / решение": "Добавлена сортировка по кодификатору в настройке формы. Для уже созданных документов — перевыбрать настройку формы. По согласованию с Владимиром перезаполнены все формы ввода бюджета в правильном порядке. В отчётах и новых формах ввода порядок — по кодификатору.", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-06-04", "Дата выполнения": "2026-06-04", "Оценка, ч": null, "Комментарии / интеграционные заметки": "Чат Макс, 04.06.2026. Обсуждали: форма зачищает при выборе настройки; вариант выгрузки шаблона Excel — отклонён в пользу полной перезаливки."}, {"№": null, "Дата обращения": "2026-06-08", "Инициатор": "Гришаев Арсений Анатольевич", "Обращение": "Шаблон Excel для загрузки — элементы нижнего уровня, без групп\nПри загрузке из Excel выбирают группы вместо элементов нижнего уровня (по проектам). Нужен шаблон с листовыми элементами, не группами.", "Описание работы / решение": "В работе. На форме ввода бюджета ограничение выбора уже сделано (КРОКУС). Остаётся: выгрузка шаблона Excel без групп. Вариант Владимира — колонка «кодификатор» для элементов.", "Исполнитель": "БИТ", "Статус": "В работе", "Плановый срок": "2026-06-09", "Дата выполнения": null, "Оценка, ч": null, "Комментарии / интеграционные заметки": "Чат Макс. Арсений, Владимир Задков. Добавим доп реквизит который заполним при записи элемента? (согласовать на статусе 09.06.2026)"}, {"№": null, "Дата обращения": "2026-06-08", "Инициатор": "Замяткин Роман Владимирович", "Обращение": "Согласование заявок из КИТ: Роман не видит заявку на визе\nВиза «Инициатор» с условием Исполнитель = текущий пользователь не срабатывает — исполнитель в заявке из КИТ пустой. Виза «Все пользователи» неактивна, Роман не видит заявку.", "Описание работы / решение": "Скорректирован маршрут согласования для заявок из КИТ: убрано согласование инициатором. Условие по полю «загружен из КИТ». Для заявок, создаваемых в БИТ, маршрут прежний. Проверены права на визу, Роману направлено письмо.", "Исполнитель": "БИТ", "Статус": "Выполнено", "Плановый срок": "2026-06-08", "Дата выполнения": "2026-06-08", "Оценка, ч": null, "Комментарии / интеграционные заметки": "Чат Макс. Арсений, Владимир Задков. КРОКУС: при необходимости ответственный вручную проставляет исполнителя в заявке."}], "columns": ["№", "Дата обращения", "Инициатор", "Обращение", "Описание работы / решение", "Исполнитель", "Статус", "Плановый срок", "Дата выполнения", "Оценка, ч", "Комментарии / интеграционные заметки"], "initiators": ["Баташова Оксана Пантелеевна", "Гришаев Арсений Анатольевич", "Задков Владимир Владимирович", "Замяткин Роман Владимирович", "Хлюпин Денис Сергеевич"]}</script>
+  <script>
+    const STATUS_OPTIONS = ["Новое", "В работе", "На уточнении", "Выполнено", "Отложено", "Снято"];
+    const EXECUTOR_OPTIONS = ["БИТ", "КРОКУС"];
+    const STATUS_CLASS = {
+      "Новое": "st-new",
+      "В работе": "st-progress",
+      "На уточнении": "st-clarify",
+      "Выполнено": "st-done",
+      "Отложено": "st-hold",
+      "Снято": "st-cancel",
+    };
+    const WIDE_FIELDS = new Set([
+      "Обращение", "Описание работы / решение",
+      "Комментарии / интеграционные заметки"
+    ]);
+    const HIDDEN_COLUMNS = new Set(["Описание / суть обращения", "Источник"]);
+    const HOURS_COLUMN = "Оценка, ч";
+    const HOURS_VISIBILITY_KEY = "krokus-registry-hours-visible";
+    const VIEW_MODE = true;
+    const CLIENT_PAGES_URL = "https://denishlupin88.github.io/krokus-ope-registry/";
+    const DATE_FIELDS = new Set(["Дата обращения", "Плановый срок", "Дата выполнения"]);
+    const COL_LABELS = {
+      "Дата обращения": "Дата",
+      "Описание работы / решение": "Решение",
+      "Комментарии / интеграционные заметки": "Комментарии",
+      "Плановый срок": "План",
+      "Дата выполнения": "Выполнено",
+      "Оценка, ч": "Часы",
+    };
+
+    let state = { meta: {}, appeals: [], columns: [] };
+    let columns = [];
+    let initiatorOptions = [];
+
+    const rowsEl = document.getElementById("rows");
+    const headerRowEl = document.getElementById("headerRow");
+    const searchEl = document.getElementById("search");
+    const statusFilterEl = document.getElementById("statusFilter");
+    const executorFilterEl = document.getElementById("executorFilter");
+    const saveStatusEl = document.getElementById("saveStatus");
+
+    function emptyRow() {
+      const row = {};
+      columns.forEach(col => {
+        if (col === "№") row[col] = null;
+        else if (col === "Оценка, ч") row[col] = null;
+        else row[col] = "";
+      });
+      return row;
+    }
+
+    function renumber() {
+      state.appeals.forEach((row, idx) => { row["№"] = idx + 1; });
+    }
+
+    function normalizeValue(col, value) {
+      if (value === "" || value === "—") return null;
+      if (col === "Оценка, ч") {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+      if (col === "№") {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+      return value;
+    }
+
+    function getFieldValue(tr, col) {
+      const field = tr.querySelector(`[data-field="${col}"]`);
+      if (!field) return "";
+      if (VIEW_MODE) return field.dataset.raw ?? field.textContent ?? "";
+      return field.value ?? field.textContent ?? "";
+    }
+
+    function collectRow(tr) {
+      const row = {};
+      columns.forEach(col => {
+        if (!tr.querySelector(`[data-field="${col}"]`)) return;
+        row[col] = normalizeValue(col, getFieldValue(tr, col));
+      });
+      return row;
+    }
+
+    function formatDisplayValue(col, value) {
+      if (value === null || value === "") return "—";
+      if (col === "Инициатор") return formatInitiator(value) || "—";
+      if (DATE_FIELDS.has(col)) {
+        const d = parseDateValue(value);
+        if (d) return d.toLocaleDateString("ru-RU");
+      }
+      return String(value);
+    }
+
+    function collectData() {
+      return {
+        meta: {
+          ...state.meta,
+          updated: new Date().toISOString().slice(0, 10),
+          initiators: getInitiatorOptions(),
+        },
+        appeals: [...rowsEl.querySelectorAll("tr")].map(collectRow),
+        columns,
+        initiators: getInitiatorOptions(),
+      };
+    }
+
+    function getInitiatorOptions() {
+      const names = new Set(initiatorOptions);
+      state.appeals.forEach(row => {
+        if (row["Инициатор"]) names.add(String(row["Инициатор"]).trim());
+      });
+      return [...names].sort((a, b) => a.localeCompare(b, "ru"));
+    }
+
+    function formatInitiator(name) {
+      if (!name) return "";
+      const parts = String(name).trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const surname = parts[0];
+        const firstName = parts[1];
+        return `${firstName} ${surname.charAt(0).toUpperCase()}.`;
+      }
+      return name;
+    }
+
+    function paintStatus(select) {
+      select.className = "cell-select " + (STATUS_CLASS[select.value] || "st-default");
+    }
+
+    function makeSelect(col, value, options, extraClass = "", labelFn = null) {
+      const select = document.createElement("select");
+      select.className = "cell-select " + extraClass;
+      select.dataset.field = col;
+      if (labelFn && value) select.title = value;
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "—";
+      select.appendChild(empty);
+      const unique = [...new Set(options)];
+      if (value && !unique.includes(value)) unique.unshift(value);
+      unique.forEach(opt => {
+        const option = document.createElement("option");
+        option.value = opt;
+        option.textContent = labelFn ? labelFn(opt) : opt;
+        option.title = opt;
+        if (value === opt) option.selected = true;
+        select.appendChild(option);
+      });
+      if (col === "Статус") {
+        paintStatus(select);
+        select.addEventListener("change", () => {
+          paintStatus(select);
+          applyFilters();
+          updateStats();
+        });
+      } else {
+        select.addEventListener("change", applyFilters);
+      }
+      return select;
+    }
+
+    function autoResizeTextarea(ta) {
+      ta.style.height = "0px";
+      ta.style.height = Math.max(28, ta.scrollHeight) + "px";
+    }
+
+    function bindTextarea(ta) {
+      autoResizeTextarea(ta);
+      ta.addEventListener("input", () => autoResizeTextarea(ta));
+    }
+
+    function resizeAllTextareas() {
+      rowsEl.querySelectorAll(".cell-textarea").forEach(autoResizeTextarea);
+    }
+
+    function makeField(col, value) {
+      const td = document.createElement("td");
+      td.dataset.col = col;
+      if (col === "№") {
+        td.textContent = value ?? "—";
+        return td;
+      }
+      if (VIEW_MODE) {
+        const span = document.createElement("span");
+        span.className = "cell-view";
+        span.dataset.field = col;
+        span.dataset.raw = value ?? "";
+        if (col === "Статус") {
+          span.classList.add("status-badge", STATUS_CLASS[value] || "st-default");
+          span.textContent = value || "—";
+        } else {
+          span.textContent = formatDisplayValue(col, value);
+        }
+        td.appendChild(span);
+        return td;
+      }
+      if (col === "Статус") {
+        td.appendChild(makeSelect(col, value || "", STATUS_OPTIONS));
+      } else if (col === "Исполнитель") {
+        td.appendChild(makeSelect(col, value || "", EXECUTOR_OPTIONS));
+      } else if (col === "Инициатор") {
+        const initiatorSelect = makeSelect(col, value || "", getInitiatorOptions(), "", formatInitiator);
+        initiatorSelect.addEventListener("change", () => {
+          initiatorSelect.title = initiatorSelect.value || "";
+        });
+        td.appendChild(initiatorSelect);
+      } else if (WIDE_FIELDS.has(col)) {
+        const ta = document.createElement("textarea");
+        ta.className = "cell-textarea";
+        ta.dataset.field = col;
+        ta.value = value ?? "";
+        ta.rows = 1;
+        bindTextarea(ta);
+        td.appendChild(ta);
+      } else {
+        const input = document.createElement("input");
+        input.className = "cell-input";
+        input.dataset.field = col;
+        input.type = DATE_FIELDS.has(col) ? "date" : (col === "Оценка, ч" ? "number" : "text");
+        input.value = value ?? "";
+        td.appendChild(input);
+      }
+      return td;
+    }
+
+    function renderHeader() {
+      headerRowEl.innerHTML = "";
+      columns.forEach(col => {
+        const th = document.createElement("th");
+        th.dataset.col = col;
+        th.textContent = COL_LABELS[col] || col;
+        th.title = col;
+        headerRowEl.appendChild(th);
+      });
+      if (!VIEW_MODE) {
+        const th = document.createElement("th");
+        th.dataset.col = "actions";
+        th.textContent = "×";
+        headerRowEl.appendChild(th);
+      }
+    }
+
+    function renderRows() {
+      rowsEl.innerHTML = "";
+      state.appeals.forEach((item, index) => {
+        const tr = document.createElement("tr");
+        tr.dataset.index = String(index);
+        columns.forEach(col => {
+          tr.appendChild(makeField(col, item[col]));
+        });
+        if (!VIEW_MODE) {
+          const actions = document.createElement("td");
+          actions.dataset.col = "actions";
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "btn-icon";
+          del.title = "Удалить";
+          del.textContent = "×";
+          del.addEventListener("click", () => {
+            state.appeals.splice(index, 1);
+            renumber();
+            renderRows();
+            updateStats();
+            applyFilters();
+          });
+          actions.appendChild(del);
+          tr.appendChild(actions);
+        }
+        rowsEl.appendChild(tr);
+      });
+      resizeAllTextareas();
+      updateStats();
+      applyFilters();
+    }
+
+    function startOfDay(date = new Date()) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function parseDateValue(value) {
+      if (!value) return null;
+      const d = new Date(String(value) + "T00:00:00");
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function isTodayDate(value) {
+      const d = parseDateValue(value);
+      if (!d) return false;
+      return d.getTime() === startOfDay().getTime();
+    }
+
+    function isWithinLastDays(value, days) {
+      const d = parseDateValue(value);
+      if (!d) return false;
+      const today = startOfDay();
+      const from = new Date(today);
+      from.setDate(from.getDate() - (days - 1));
+      return d >= from && d <= today;
+    }
+
+    function isOverdueRow(row) {
+      const plan = row["Плановый срок"];
+      if (!plan) return false;
+      if (["Выполнено", "Снято"].includes(row["Статус"])) return false;
+      const d = parseDateValue(plan);
+      if (!d) return false;
+      return d < startOfDay();
+    }
+
+    function updateStats() {
+      const rows = [...rowsEl.querySelectorAll("tr")].map(collectRow);
+      const done = rows.filter(r => r["Статус"] === "Выполнено").length;
+      const open = rows.filter(r => ["В работе", "Новое", "На уточнении"].includes(r["Статус"])).length;
+      const today = rows.filter(r => isTodayDate(r["Дата обращения"])).length;
+      const week = rows.filter(r => isWithinLastDays(r["Дата обращения"], 7)).length;
+      const overdue = rows.filter(isOverdueRow).length;
+      document.getElementById("statTotal").textContent = String(rows.length);
+      document.getElementById("statDone").textContent = String(done);
+      document.getElementById("statOpen").textContent = String(open);
+      document.getElementById("statToday").textContent = String(today);
+      document.getElementById("statWeek").textContent = String(week);
+      document.getElementById("statOverdue").textContent = String(overdue);
+      document.getElementById("updatedAt").textContent = new Date().toISOString().slice(0, 10);
+      if (state.meta?.title) document.getElementById("pageTitle").textContent = state.meta.title;
+    }
+
+    function applyFilters() {
+      const q = searchEl.value.trim().toLowerCase();
+      const status = statusFilterEl.value;
+      const executor = executorFilterEl.value;
+      [...rowsEl.querySelectorAll("tr")].forEach(tr => {
+        const text = tr.textContent.toLowerCase();
+        const statusVal = getFieldValue(tr, "Статус");
+        const execVal = getFieldValue(tr, "Исполнитель");
+        const okSearch = !q || text.includes(q);
+        const okStatus = !status || statusVal === status;
+        const okExecutor = !executor || execVal === executor;
+        tr.classList.toggle("hidden", !(okSearch && okStatus && okExecutor));
+      });
+    }
+
+    function isHoursColumnVisible() {
+      if (VIEW_MODE) return false;
+      return localStorage.getItem(HOURS_VISIBILITY_KEY) === "1";
+    }
+
+    function applyHoursColumnVisibility() {
+      document.body.classList.toggle("hours-col-hidden", !isHoursColumnVisible());
+    }
+
+    function toggleHoursColumn() {
+      const visible = !isHoursColumnVisible();
+      localStorage.setItem(HOURS_VISIBILITY_KEY, visible ? "1" : "0");
+      applyHoursColumnVisibility();
+    }
+
+    function bindCrocusSecretToggle() {
+      let clicks = 0;
+      let timer = null;
+      document.getElementById("logoCrocus").addEventListener("click", () => {
+        if (VIEW_MODE) return;
+        clicks += 1;
+        clearTimeout(timer);
+        timer = setTimeout(() => { clicks = 0; }, 700);
+        if (clicks >= 3) {
+          clicks = 0;
+          toggleHoursColumn();
+        }
+      });
+    }
+
+    function applyViewMode() {
+      if (!VIEW_MODE) return;
+      document.body.classList.add("view-client", "hours-col-hidden");
+      const hint = document.getElementById("footerHint");
+      if (hint) hint.textContent = "Режим просмотра · поиск и фильтры доступны";
+    }
+
+    function fillStatusFilter() {
+      const current = statusFilterEl.value;
+      statusFilterEl.innerHTML = '<option value="">Все статусы</option>';
+      STATUS_OPTIONS.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.textContent = s;
+        statusFilterEl.appendChild(opt);
+      });
+      statusFilterEl.value = current;
+    }
+
+    function exportJson() {
+      const data = collectData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "реестр_обращений.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    const DEFAULT_COLUMNS = JSON.parse(document.getElementById("initial-data").textContent).columns || [];
+
+    function mergeAppealRow(row) {
+      const title = String(row["Обращение"] || "").trim();
+      const detail = String(row["Описание / суть обращения"] || "").trim();
+      let merged = title || detail || "";
+      if (title && detail) {
+        if (title === detail) merged = title;
+        else if (detail.includes(title)) merged = detail;
+        else if (title.includes(detail)) merged = title;
+        else merged = title + "\n" + detail;
+      }
+      const out = { ...row };
+      out["Обращение"] = merged || null;
+      delete out["Описание / суть обращения"];
+      return out;
+    }
+
+    function normalizeColumns(cols) {
+      const list = (cols || DEFAULT_COLUMNS).filter(c => !HIDDEN_COLUMNS.has(c));
+      return list.length ? list : DEFAULT_COLUMNS;
+    }
+
+    function applyLoadedData(data) {
+      if (!Array.isArray(data.appeals)) throw new Error("Нет массива appeals");
+      state.meta = data.meta || state.meta || {};
+      columns = normalizeColumns(data.columns);
+      initiatorOptions = data.initiators || data.meta?.initiators || initiatorOptions;
+      state.appeals = data.appeals.map(row => {
+        const merged = mergeAppealRow(row);
+        const cleaned = emptyRow();
+        columns.forEach(col => {
+          if (merged[col] !== undefined && merged[col] !== null) cleaned[col] = merged[col];
+        });
+        return cleaned;
+      });
+      renderHeader();
+      renumber();
+      renderRows();
+    }
+
+    async function loadData() {
+      try {
+        const res = await fetch("/api/data", { cache: "no-store" });
+        if (res.ok) return await res.json();
+      } catch (err) {
+        console.warn("API недоступен, используем встроенные данные", err);
+      }
+      return JSON.parse(document.getElementById("initial-data").textContent);
+    }
+
+    function setSaveStatus(text, kind = "") {
+      saveStatusEl.textContent = text;
+      saveStatusEl.className = "save-status" + (kind ? " " + kind : "");
+    }
+
+    async function publishForClient() {
+      const btn = document.getElementById("publishGithub");
+      if (!btn || VIEW_MODE) return;
+      btn.disabled = true;
+      setSaveStatus("Публикация для клиента…");
+      try {
+        const res = await fetch("/api/publish-github", {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify(collectData()),
+        });
+        const result = await res.json();
+        if (!res.ok || !result.ok) {
+          throw new Error(result.error || result.warning || "Не удалось опубликовать");
+        }
+        const url = result.url || CLIENT_PAGES_URL;
+        if (result.pushed) {
+          setSaveStatus("Опубликовано на GitHub", "ok");
+          alert("Реестр опубликован для клиента.\n\n" + url);
+        } else {
+          setSaveStatus(result.warning ? "Собрано локально" : "Готово", "ok");
+          alert((result.warning || "Файлы собраны локально.") + "\n\n" + url);
+        }
+      } catch (err) {
+        setSaveStatus("Ошибка публикации", "err");
+        alert("Публикация для клиента не выполнена.\n\n" + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function saveToServer() {
+      const btn = document.getElementById("saveBtn");
+      btn.disabled = true;
+      setSaveStatus("Сохранение…");
+      try {
+        const res = await fetch("/api/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify(collectData()),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const result = await res.json();
+        state.meta.updated = result.updated;
+        document.getElementById("updatedAt").textContent = result.updated;
+        setSaveStatus("Сохранено " + result.updated, "ok");
+      } catch (err) {
+        setSaveStatus("Ошибка сохранения", "err");
+        alert("Не удалось сохранить в папку проекта. Запустите реестр через open_registry.bat");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function importJson(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          applyLoadedData(JSON.parse(reader.result));
+          setSaveStatus("Импортировано, не сохранено");
+        } catch (err) {
+          alert("Ошибка импорта: " + err.message);
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    document.getElementById("addRow").addEventListener("click", () => {
+      const row = emptyRow();
+      row["Статус"] = "Новое";
+      state.appeals.push(row);
+      renumber();
+      renderRows();
+    });
+    document.getElementById("saveBtn").addEventListener("click", saveToServer);
+    document.getElementById("publishGithub")?.addEventListener("click", publishForClient);
+    document.getElementById("exportJson").addEventListener("click", exportJson);
+    document.getElementById("importJson").addEventListener("click", () => document.getElementById("importFile").click());
+    document.getElementById("importFile").addEventListener("change", e => {
+      const file = e.target.files?.[0];
+      if (file) importJson(file);
+      e.target.value = "";
+    });
+    searchEl.addEventListener("input", applyFilters);
+    statusFilterEl.addEventListener("change", applyFilters);
+    executorFilterEl.addEventListener("change", applyFilters);
+
+    async function init() {
+      try {
+        applyViewMode();
+        applyHoursColumnVisibility();
+        applyLoadedData(await loadData());
+        fillStatusFilter();
+        setSaveStatus("");
+      } catch (err) {
+        alert("Ошибка загрузки реестра: " + err.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
