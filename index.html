@@ -698,7 +698,18 @@
           headers: { "Content-Type": "application/json; charset=utf-8" },
           body: JSON.stringify(collectData()),
         });
-        const result = await res.json();
+        const raw = await res.text();
+        let result;
+        try {
+          result = JSON.parse(raw);
+        } catch (parseErr) {
+          if (res.status === 404) {
+            throw new Error(
+              "Сервер устарел (нет API публикации). Закройте окно терминала (Ctrl+C) и снова запустите реестр через ярлык."
+            );
+          }
+          throw new Error("Сервер вернул не JSON. Перезапустите реестр через ярлык.");
+        }
         if (!res.ok || !result.ok) {
           throw new Error(result.error || result.warning || "Не удалось опубликовать");
         }
