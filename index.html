@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache">
   <title>Реестр обращений ОПЭ Крокус</title>
   <style>
     :root {
@@ -606,7 +607,12 @@
       if (!VIEW_MODE) return;
       document.body.classList.add("view-client", "hours-col-hidden");
       const hint = document.getElementById("footerHint");
-      if (hint) hint.textContent = "Режим просмотра · поиск и фильтры доступны";
+      const updated = state.meta?.updated || document.getElementById("updatedAt")?.textContent || "";
+      if (hint) {
+        hint.textContent = updated
+          ? "Режим просмотра · данные от " + updated + " · обновите страницу (F5), если не видите изменений"
+          : "Режим просмотра · обновите страницу (F5), если не видите изменений";
+      }
     }
 
     function fillStatusFilter() {
@@ -672,14 +678,20 @@
       renderRows();
     }
 
+    function loadEmbeddedData() {
+      return JSON.parse(document.getElementById("initial-data").textContent);
+    }
+
     async function loadData() {
+      if (VIEW_MODE) return loadEmbeddedData();
       try {
         const res = await fetch("/api/data", { cache: "no-store" });
-        if (res.ok) return await res.json();
+        const ctype = res.headers.get("content-type") || "";
+        if (res.ok && ctype.includes("application/json")) return await res.json();
       } catch (err) {
         console.warn("API недоступен, используем встроенные данные", err);
       }
-      return JSON.parse(document.getElementById("initial-data").textContent);
+      return loadEmbeddedData();
     }
 
     function setSaveStatus(text, kind = "") {
@@ -787,9 +799,9 @@
 
     async function init() {
       try {
-        applyViewMode();
         applyHoursColumnVisibility();
         applyLoadedData(await loadData());
+        applyViewMode();
         fillStatusFilter();
         setSaveStatus("");
       } catch (err) {
