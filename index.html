@@ -1312,10 +1312,6 @@
       const data = JSON.parse(document.getElementById("initial-data").textContent);
       appeals = data.appeals || [];
     }
-    const dateFromEl = document.getElementById("dateFrom");
-    const dateToEl = document.getElementById("dateTo");
-    const statusFilterEl = document.getElementById("statusFilter");
-    const executorFilterEl = document.getElementById("executorFilter");
 
     let chartStatus, chartExecutor, chartMonths, chartOnTime, chartClosed;
     let chartHoursMonths, chartHoursExecutor;
